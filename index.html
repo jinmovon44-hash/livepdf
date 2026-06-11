@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LivePDF Editor</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -767,37 +767,70 @@ function showToast(msg, type = 'success') {
    PDF EXPORT
 ────────────────────────────────────────────────────────────── */
 function downloadPDF() {
-  const el      = preview.contentDocument.body;
-  const name    = document.getElementById('filename').value.trim() || 'document';
-  const format  = document.getElementById('pageFormat').value;
-  const orient  = document.getElementById('pageOrient').value;
-  const margin  = parseInt(document.getElementById('pageMargin').value, 10);
+  const name   = document.getElementById('filename').value.trim() || 'document';
+  const format = document.getElementById('pageFormat').value;
+  const orient = document.getElementById('pageOrient').value;
+  const margin = document.getElementById('pageMargin').value;
 
-  const opt = {
-    margin,
-    filename: name.endsWith('.pdf') ? name : name + '.pdf',
-    image:    { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'mm', format, orientation: orient }
+  const marginMap = { '0': '0mm', '5': '5mm', '10': '15mm', '20': '25mm' };
+  const marginVal = marginMap[margin] || '15mm';
+
+  const sizeMap = { 'a4': 'A4', 'a3': 'A3', 'letter': 'letter', 'legal': 'legal' };
+  const pageSize = sizeMap[format] || 'A4';
+
+  // Build the content to print
+  const content = editor.value;
+
+  // Inject print CSS into the user's HTML
+  const printCSS = `
+    <style>
+      @page {
+        size: ${pageSize} ${orient};
+        margin: ${marginVal};
+      }
+      @media print {
+        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      }
+    </style>`;
+
+  // Insert print CSS into head or prepend if no head
+  let printContent;
+  if (content.includes('</head>')) {
+    printContent = content.replace('</head>', printCSS + '</head>');
+  } else if (content.includes('<head>')) {
+    printContent = content.replace('<head>', '<head>' + printCSS);
+  } else {
+    printContent = printCSS + content;
+  }
+
+  // Open print window
+  const printWin = window.open('', '_blank', 'width=900,height=700');
+  printWin.document.open();
+  printWin.document.write(printContent);
+  printWin.document.close();
+
+  // Wait for fonts/images to load then print
+  printWin.onload = function() {
+    setTimeout(() => {
+      printWin.focus();
+      printWin.print();
+      printWin.close();
+      updateStatus('PDF ready!');
+      showToast('Print dialog opened — Save as PDF', 'success');
+    }, 600);
   };
 
-  const original = pdfBtn.innerHTML;
-  pdfBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Generating…';
-  pdfBtn.disabled = true;
-  updateStatus('Generating PDF…');
+  // Fallback if onload doesn't fire
+  setTimeout(() => {
+    try {
+      if (!printWin.closed) {
+        printWin.focus();
+        printWin.print();
+      }
+    } catch(e) {}
+  }, 1500);
 
-  html2pdf().set(opt).from(el).save().then(() => {
-    pdfBtn.innerHTML = original;
-    pdfBtn.disabled  = false;
-    updateStatus('PDF saved!');
-    showToast(`${name}.pdf downloaded`, 'success');
-  }).catch(err => {
-    pdfBtn.innerHTML = original;
-    pdfBtn.disabled  = false;
-    updateStatus('Export failed');
-    showToast('PDF generation failed', 'error');
-    console.error(err);
-  });
+  updateStatus('Opening print dialog…');
 }
 
 /* ──────────────────────────────────────────────────────────────
