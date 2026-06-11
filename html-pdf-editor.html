@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LivePDF Editor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0D1117;
+      --surface:   #161B22;
+      --surface2:  #1C2128;
+      --border:    #30363D;
+      --accent:    #00D9FF;
+      --accent-dim:#00D9FF22;
+      --accent-glow: 0 0 20px #00D9FF55;
+      --text:      #E6EDF3;
+      --muted:     #8B949E;
+      --danger:    #F85149;
+      --success:   #3FB950;
+      --warning:   #D29922;
+      --radius:    8px;
+      --font-ui:   'Inter', system-ui, sans-serif;
+      --font-code: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.3px;
+      color: var(--text);
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .logo-icon {
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, var(--accent), #0066FF);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      box-shadow: 0 0 12px #00D9FF44;
+    }
+    .logo span { color: var(--accent); }
+
+    .topbar-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .control-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      white-space: nowrap;
+    }
+    select, input[type="text"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      border-radius: var(--radius);
+      padding: 5px 10px;
+      outline: none;
+      transition: border-color 0.2s;
+      cursor: pointer;
+    }
+    select:hover, input[type="text"]:hover { border-color: var(--muted); }
+    select:focus, input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+    input[type="text"] { width: 180px; cursor: text; font-family: var(--font-code); font-size: 12px; }
+
+    .topbar-spacer { flex: 1; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.18s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--muted);
+    }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--muted); }
+    .btn-primary {
+      background: var(--accent);
+      color: #0D1117;
+      font-weight: 700;
+    }
+    .btn-primary:hover { background: #33E5FF; box-shadow: var(--accent-glow); }
+    .btn-primary:disabled { background: #2a3640; color: var(--muted); cursor: not-allowed; box-shadow: none; }
+    .btn-danger { background: transparent; border-color: var(--border); color: var(--muted); }
+    .btn-danger:hover { background: #F8514911; border-color: var(--danger); color: var(--danger); }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      height: 44px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .toolbar-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .toolbar-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border); }
+    .toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+    .toolbar-spacer { flex: 1; }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── MAIN ── */
+    .workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── PANES ── */
+    .pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .pane-editor { border-right: 1px solid var(--border); }
+
+    .pane-header {
+      height: 36px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .pane-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .char-count {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--font-code);
+      margin-left: auto;
+    }
+
+    /* line numbers + editor */
+    .editor-wrap {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+    .line-numbers {
+      width: 44px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+      overflow: hidden;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .line-numbers span {
+      display: block;
+      text-align: right;
+      padding-right: 10px;
+      font-family: var(--font-code);
+      font-size: 13px;
+      line-height: 1.6;
+      color: #3D444D;
+    }
+    .line-numbers span.active { color: var(--muted); }
+
+    #codeEditor {
+      flex: 1;
+      background: var(--bg);
+      color: var(--text);
+      border: none;
+      padding: 16px 16px 16px 16px;
+      font-family: var(--font-code);
+      font-size: 13px;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+      tab-size: 2;
+      overflow-y: auto;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    #codeEditor::selection { background: #00D9FF22; }
+
+    /* preview pane */
+    .preview-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    #previewFrame {
+      flex: 1;
+      border: none;
+      background: white;
+      transition: box-shadow 0.3s;
+    }
+    #previewFrame.updating {
+      box-shadow: inset 0 0 0 2px var(--accent);
+    }
+
+    /* ── STATUSBAR ── */
+    .statusbar {
+      height: 26px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    .status-item {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-code);
+    }
+    .status-item.accent { color: var(--accent); }
+
+    /* ── MODAL (Templates) ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: #00000088;
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 680px;
+      max-width: 95vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px #00000080;
+    }
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title { font-size: 16px; font-weight: 700; }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .modal-close:hover { background: var(--surface2); color: var(--text); }
+    .modal-body { padding: 20px 24px; overflow-y: auto; }
+    .template-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .template-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .template-card:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--accent-dim); }
+    .template-card-icon { font-size: 24px; margin-bottom: 10px; }
+    .template-card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .template-card-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 36px;
+      right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 32px #00000060;
+      z-index: 200;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      pointer-events: none;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { border-color: var(--success); }
+    .toast.error { border-color: var(--danger); }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    @media (max-width: 768px) {
+      .workspace { flex-direction: column; }
+      .pane-editor { border-right: none; border-bottom: 1px solid var(--border); }
+      .control-group .control-label { display: none; }
+      input[type="text"] { width: 120px; }
+      .template-grid { grid-template-columns: 1fr; }
+      .hide-mobile { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      Live<span>PDF</span>
+    </div>
+    <div class="topbar-sep"></div>
+
+    <div class="control-group hide-mobile">
+      <span class="control-label">Format</span>
+      <select id="pageFormat">
+        <option value="a4">A4</option>
+        <option value="letter">Letter</option>
+        <option value="a3">A3</option>
+        <option value="legal">Legal</option>
+      </select>
+    </div>
+
+    <div class="control-group hide-mobile">
+      <span class="control-label">Orient</span>
+      <select id="pageOrient">
+        <option value="portrait">Portrait</option>
+        <option value="landscape">Landscape</option>
+      </select>
+    </div>
+
+    <div class="control-group hide-mobile">
+      <span class="control-label">Margin</span>
+      <select id="pageMargin">
+        <option value="10">Normal</option>
+        <option value="5">Narrow</option>
+        <option value="20">Wide</option>
+        <option value="0">None</option>
+      </select>
+    </div>
+
+    <div class="topbar-sep hide-mobile"></div>
+
+    <div class="control-group">
+      <span class="control-label hide-mobile">Filename</span>
+      <input type="text" id="filename" value="document" placeholder="filename" />
+    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <button class="btn btn-ghost" onclick="copyHTML()" title="Copy HTML">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      <span class="hide-mobile">Copy HTML</span>
+    </button>
+    <button class="btn btn-ghost" onclick="clearEditor()" title="Clear">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/></svg>
+      <span class="hide-mobile">Clear</span>
+    </button>
+    <button class="btn btn-primary" id="pdfBtn" onclick="downloadPDF()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Download PDF
+    </button>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <button class="toolbar-btn" onclick="openTemplates()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Templates
+    </button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn" onclick="insertSnippet('table')" title="Insert table">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+      Table
+    </button>
+    <button class="toolbar-btn" onclick="insertSnippet('heading')" title="Add heading">H1</button>
+    <button class="toolbar-btn" onclick="insertSnippet('ul')" title="List">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      List
+    </button>
+    <button class="toolbar-btn" onclick="insertSnippet('img')" title="Image">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Image
+    </button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn" onclick="adjustFontSize(-1)">A−</button>
+    <button class="toolbar-btn" onclick="adjustFontSize(1)">A+</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn" onclick="wrapTag('b')"><b>B</b></button>
+    <button class="toolbar-btn" onclick="wrapTag('i')"><i>I</i></button>
+    <button class="toolbar-btn" onclick="wrapTag('u')"><u>U</u></button>
+
+    <div class="toolbar-spacer"></div>
+    <div class="live-indicator">
+      <div class="live-dot"></div>
+      Live Preview
+    </div>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div class="workspace">
+
+    <!-- EDITOR PANE -->
+    <div class="pane pane-editor">
+      <div class="pane-header">
+        <span class="pane-title">HTML Editor</span>
+        <span class="char-count" id="charCount">0 chars</span>
+      </div>
+      <div class="editor-wrap">
+        <div class="line-numbers" id="lineNumbers"></div>
+        <textarea id="codeEditor" spellcheck="false" placeholder="Type your HTML here…"></textarea>
+      </div>
+    </div>
+
+    <!-- PREVIEW PANE -->
+    <div class="pane">
+      <div class="pane-header">
+        <span class="pane-title">Live Preview</span>
+      </div>
+      <div class="preview-container">
+        <iframe id="previewFrame" title="Live preview"></iframe>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STATUSBAR -->
+  <div class="statusbar">
+    <div class="status-item accent" id="statusMsg">Ready</div>
+    <div class="status-item" id="cursorPos">Ln 1, Col 1</div>
+    <div class="status-item" style="margin-left:auto">HTML · UTF-8</div>
+    <div class="status-item">LivePDF v2.0</div>
+  </div>
+
+  <!-- TEMPLATES MODAL -->
+  <div class="modal-backdrop" id="templatesModal" onclick="closeTemplatesOnBackdrop(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Choose a Template</span>
+        <button class="modal-close" onclick="closeTemplates()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="template-grid" id="templateGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">
+    <span id="toastIcon">✓</span>
+    <span id="toastMsg">Done</span>
+  </div>
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   STATE
+────────────────────────────────────────────────────────────── */
+const editor    = document.getElementById('codeEditor');
+const preview   = document.getElementById('previewFrame');
+const pdfBtn    = document.getElementById('pdfBtn');
+const lineNums  = document.getElementById('lineNumbers');
+const charCount = document.getElementById('charCount');
+const cursorPos = document.getElementById('cursorPos');
+const statusMsg = document.getElementById('statusMsg');
+
+let previewTimeout = null;
+let editorFontSize = 13;
+
+/* ──────────────────────────────────────────────────────────────
+   LIVE PREVIEW
+────────────────────────────────────────────────────────────── */
+function updatePreview() {
+  preview.srcdoc = editor.value;
+  preview.classList.add('updating');
+  setTimeout(() => preview.classList.remove('updating'), 600);
+}
+
+function schedulePreview() {
+  clearTimeout(previewTimeout);
+  previewTimeout = setTimeout(updatePreview, 300);
+}
+
+editor.addEventListener('input', () => {
+  schedulePreview();
+  updateLineNumbers();
+  updateCharCount();
+  updateStatus('Editing…');
+});
+
+editor.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    insertAtCursor('  ');
+  }
+});
+
+editor.addEventListener('click', updateCursor);
+editor.addEventListener('keyup', updateCursor);
+
+/* ──────────────────────────────────────────────────────────────
+   LINE NUMBERS
+────────────────────────────────────────────────────────────── */
+function updateLineNumbers() {
+  const lines = editor.value.split('\n').length;
+  const curLine = editor.value.substr(0, editor.selectionStart).split('\n').length;
+  let html = '';
+  for (let i = 1; i <= lines; i++) {
+    html += `<span class="${i === curLine ? 'active' : ''}">${i}</span>`;
+  }
+  lineNums.innerHTML = html;
+  lineNums.scrollTop = editor.scrollTop;
+}
+
+editor.addEventListener('scroll', () => { lineNums.scrollTop = editor.scrollTop; });
+
+/* ──────────────────────────────────────────────────────────────
+   CHAR COUNT / CURSOR
+────────────────────────────────────────────────────────────── */
+function updateCharCount() {
+  const len = editor.value.length;
+  charCount.textContent = len.toLocaleString() + ' chars';
+}
+
+function updateCursor() {
+  const text = editor.value.substr(0, editor.selectionStart);
+  const lines = text.split('\n');
+  const ln = lines.length;
+  const col = lines[lines.length - 1].length + 1;
+  cursorPos.textContent = `Ln ${ln}, Col ${col}`;
+  updateLineNumbers();
+}
+
+/* ──────────────────────────────────────────────────────────────
+   FONT SIZE
+────────────────────────────────────────────────────────────── */
+function adjustFontSize(delta) {
+  editorFontSize = Math.max(10, Math.min(22, editorFontSize + delta));
+  editor.style.fontSize = editorFontSize + 'px';
+  document.querySelectorAll('.line-numbers span').forEach(s => s.style.fontSize = editorFontSize + 'px');
+  showToast(`Font size: ${editorFontSize}px`, 'success');
+}
+
+/* ──────────────────────────────────────────────────────────────
+   WRAP TAG
+────────────────────────────────────────────────────────────── */
+function wrapTag(tag) {
+  const start = editor.selectionStart;
+  const end   = editor.selectionEnd;
+  const sel   = editor.value.substring(start, end) || 'text';
+  const replacement = `<${tag}>${sel}</${tag}>`;
+  editor.setRangeText(replacement, start, end, 'end');
+  schedulePreview();
+  updateLineNumbers();
+}
+
+/* ──────────────────────────────────────────────────────────────
+   INSERT AT CURSOR
+────────────────────────────────────────────────────────────── */
+function insertAtCursor(text) {
+  const pos = editor.selectionStart;
+  editor.setRangeText(text, pos, editor.selectionEnd, 'end');
+  schedulePreview();
+  updateLineNumbers();
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SNIPPETS
+────────────────────────────────────────────────────────────── */
+const snippets = {
+  table: `\n<table style="width:100%;border-collapse:collapse;font-family:sans-serif;font-size:14px">
+  <thead>
+    <tr style="background:#2c3e50;color:#fff">
+      <th style="padding:10px;text-align:left">Column 1</th>
+      <th style="padding:10px;text-align:left">Column 2</th>
+      <th style="padding:10px;text-align:left">Column 3</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #ddd">
+      <td style="padding:8px">Row 1</td><td style="padding:8px">Data</td><td style="padding:8px">Data</td>
+    </tr>
+    <tr style="background:#f9f9f9;border-bottom:1px solid #ddd">
+      <td style="padding:8px">Row 2</td><td style="padding:8px">Data</td><td style="padding:8px">Data</td>
+    </tr>
+  </tbody>
+</table>\n`,
+  heading: `\n<h1 style="font-family:sans-serif;color:#1a1a2e;border-bottom:3px solid #3498db;padding-bottom:10px">Your Heading Here</h1>\n`,
+  ul: `\n<ul style="font-family:sans-serif;font-size:15px;line-height:2;padding-left:20px">
+  <li>Item one</li>
+  <li>Item two</li>
+  <li>Item three</li>
+</ul>\n`,
+  img: `\n<img src="https://via.placeholder.com/600x300" alt="Description" style="width:100%;border-radius:8px;margin:10px 0" />\n`
+};
+
+function insertSnippet(key) {
+  insertAtCursor(snippets[key]);
+  updateCharCount();
+  showToast(`${key} inserted`, 'success');
+}
+
+/* ──────────────────────────────────────────────────────────────
+   COPY HTML
+────────────────────────────────────────────────────────────── */
+function copyHTML() {
+  navigator.clipboard.writeText(editor.value).then(() => {
+    showToast('HTML copied to clipboard', 'success');
+  }).catch(() => showToast('Copy failed', 'error'));
+}
+
+/* ──────────────────────────────────────────────────────────────
+   CLEAR EDITOR
+────────────────────────────────────────────────────────────── */
+function clearEditor() {
+  if (editor.value && confirm('Clear the editor? This cannot be undone.')) {
+    editor.value = '';
+    schedulePreview();
+    updateLineNumbers();
+    updateCharCount();
+    showToast('Editor cleared', 'success');
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   STATUS
+────────────────────────────────────────────────────────────── */
+let statusTimeout;
+function updateStatus(msg) {
+  statusMsg.textContent = msg;
+  clearTimeout(statusTimeout);
+  statusTimeout = setTimeout(() => { statusMsg.textContent = 'Ready'; }, 2000);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   TOAST
+────────────────────────────────────────────────────────────── */
+let toastTimeout;
+function showToast(msg, type = 'success') {
+  const toast = document.getElementById('toast');
+  const icon  = document.getElementById('toastIcon');
+  const text  = document.getElementById('toastMsg');
+  icon.textContent = type === 'success' ? '✓' : '✕';
+  text.textContent = msg;
+  toast.className  = `toast ${type} show`;
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2500);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   PDF EXPORT
+────────────────────────────────────────────────────────────── */
+function downloadPDF() {
+  const el      = preview.contentDocument.body;
+  const name    = document.getElementById('filename').value.trim() || 'document';
+  const format  = document.getElementById('pageFormat').value;
+  const orient  = document.getElementById('pageOrient').value;
+  const margin  = parseInt(document.getElementById('pageMargin').value, 10);
+
+  const opt = {
+    margin,
+    filename: name.endsWith('.pdf') ? name : name + '.pdf',
+    image:    { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format, orientation: orient }
+  };
+
+  const original = pdfBtn.innerHTML;
+  pdfBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Generating…';
+  pdfBtn.disabled = true;
+  updateStatus('Generating PDF…');
+
+  html2pdf().set(opt).from(el).save().then(() => {
+    pdfBtn.innerHTML = original;
+    pdfBtn.disabled  = false;
+    updateStatus('PDF saved!');
+    showToast(`${name}.pdf downloaded`, 'success');
+  }).catch(err => {
+    pdfBtn.innerHTML = original;
+    pdfBtn.disabled  = false;
+    updateStatus('Export failed');
+    showToast('PDF generation failed', 'error');
+    console.error(err);
+  });
+}
+
+/* ──────────────────────────────────────────────────────────────
+   TEMPLATES
+────────────────────────────────────────────────────────────── */
+const TEMPLATES = [
+  {
+    icon: '📄',
+    title: 'Blank Document',
+    desc: 'Clean starting point with basic styles',
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #212529; line-height: 1.7; padding: 40px; max-width: 800px; margin: 0 auto; }
+  h1, h2, h3 { color: #1a1a2e; }
+  p { margin-bottom: 16px; }
+</style>
+</head>
+<body>
+  <h1>Document Title</h1>
+  <p>Start writing your content here. This template uses clean, readable typography and sensible defaults.</p>
+  <h2>Section Heading</h2>
+  <p>Add your sections, tables, and content as needed.</p>
+</body>
+</html>`
+  },
+  {
+    icon: '📊',
+    title: 'Data Report',
+    desc: 'Professional report with table and header',
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; color: #2d3436; padding: 40px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0984e3; padding-bottom: 20px; margin-bottom: 30px; }
+  .org { font-size: 13px; color: #636e72; }
+  h1 { font-size: 24px; margin: 0 0 4px; color: #0984e3; }
+  .meta { font-size: 12px; color: #636e72; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+  th { background: #0984e3; color: white; padding: 11px 14px; text-align: left; }
+  td { padding: 9px 14px; border-bottom: 1px solid #dfe6e9; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  .total td { font-weight: 700; background: #ebf5fb; border-top: 2px solid #0984e3; }
+  .footer { margin-top: 40px; font-size: 11px; color: #b2bec3; border-top: 1px solid #dfe6e9; padding-top: 12px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="org">Acme Corporation</div>
+      <h1>Quarterly Report — Q2 2026</h1>
+      <div class="meta">Generated: June 2026 &nbsp;|&nbsp; Prepared by: Finance Team</div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Department</th><th>Budget</th><th>Spent</th><th>Remaining</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Engineering</td><td>$120,000</td><td>$98,400</td><td>$21,600</td><td>✅ On Track</td></tr>
+      <tr><td>Marketing</td><td>$60,000</td><td>$64,200</td><td>-$4,200</td><td>⚠️ Over Budget</td></tr>
+      <tr><td>Operations</td><td>$45,000</td><td>$39,100</td><td>$5,900</td><td>✅ On Track</td></tr>
+      <tr><td>HR</td><td>$30,000</td><td>$27,500</td><td>$2,500</td><td>✅ On Track</td></tr>
+      <tr class="total"><td>Total</td><td>$255,000</td><td>$229,200</td><td>$25,800</td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="footer">Confidential — For internal use only. © 2026 Acme Corporation.</div>
+</body>
+</html>`
+  },
+  {
+    icon: '📋',
+    title: 'Invoice',
+    desc: 'Clean professional invoice template',
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; color: #2d3436; padding: 50px; max-width: 750px; margin: 0 auto; }
+  .top { display: flex; justify-content: space-between; margin-bottom: 40px; }
+  .brand { font-size: 28px; font-weight: 800; color: #6c5ce7; letter-spacing: -1px; }
+  .invoice-label { font-size: 30px; font-weight: 300; color: #b2bec3; text-align: right; }
+  .invoice-num { font-size: 14px; color: #636e72; text-align: right; }
+  .addresses { display: flex; justify-content: space-between; margin-bottom: 30px; font-size: 14px; line-height: 1.8; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #b2bec3; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+  th { background: #6c5ce7; color: white; padding: 11px 14px; text-align: left; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; }
+  .totals { margin-top: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-size: 14px; }
+  .total-row { display: flex; gap: 40px; }
+  .total-row.grand { font-size: 18px; font-weight: 700; color: #6c5ce7; border-top: 2px solid #6c5ce7; padding-top: 8px; }
+  .footer { margin-top: 50px; font-size: 12px; color: #b2bec3; border-top: 1px solid #f0f0f0; padding-top: 16px; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="brand">YourBrand</div>
+    <div>
+      <div class="invoice-label">INVOICE</div>
+      <div class="invoice-num">#INV-2026-0042 &nbsp;|&nbsp; Due: July 15, 2026</div>
+    </div>
+  </div>
+  <div class="addresses">
+    <div><div class="label">From</div>YourBrand Inc.<br>123 Main Street<br>New Delhi, 110001<br>billing@yourbrand.com</div>
+    <div style="text-align:right"><div class="label">Bill To</div>Client Name<br>456 Client Ave<br>Mumbai, 400001<br>client@example.com</div>
+  </div>
+  <table>
+    <tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+    <tr><td>Web Design & Development</td><td>1</td><td>₹80,000</td><td>₹80,000</td></tr>
+    <tr><td>SEO Optimization (3 months)</td><td>3</td><td>₹8,000</td><td>₹24,000</td></tr>
+    <tr><td>Hosting & Domain Setup</td><td>1</td><td>₹6,000</td><td>₹6,000</td></tr>
+  </table>
+  <div class="totals">
+    <div class="total-row"><span>Subtotal</span><span>₹1,10,000</span></div>
+    <div class="total-row"><span>GST (18%)</span><span>₹19,800</span></div>
+    <div class="total-row grand"><span>Total Due</span><span>₹1,29,800</span></div>
+  </div>
+  <div class="footer">Payment due within 30 days. Bank transfer details: HDFC Bank, A/C 0012345678, IFSC HDFC0001234. Thank you for your business.</div>
+</body>
+</html>`
+  },
+  {
+    icon: '📝',
+    title: 'Resume / CV',
+    desc: 'Single-page professional resume',
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: 'Georgia', serif; color: #2d3436; padding: 40px 50px; max-width: 780px; margin: 0 auto; font-size: 14px; line-height: 1.6; }
+  h1 { font-size: 32px; letter-spacing: -0.5px; margin: 0 0 4px; color: #1a1a2e; }
+  .subtitle { color: #0984e3; font-size: 15px; font-style: italic; margin-bottom: 4px; }
+  .contact { font-size: 12px; color: #636e72; margin-bottom: 24px; }
+  .section { margin-bottom: 22px; }
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #0984e3; border-bottom: 1px solid #dfe6e9; padding-bottom: 5px; margin-bottom: 14px; }
+  .job { margin-bottom: 14px; }
+  .job-header { display: flex; justify-content: space-between; }
+  .job-title { font-weight: 700; font-size: 15px; }
+  .job-date { font-size: 12px; color: #636e72; }
+  .job-org { color: #0984e3; font-size: 13px; margin-bottom: 5px; }
+  ul { margin: 6px 0 0; padding-left: 18px; }
+  li { margin-bottom: 3px; }
+  .skills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .skill { background: #ebf5fb; color: #0984e3; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-family: Arial, sans-serif; }
+</style>
+</head>
+<body>
+  <h1>Alex Johnson</h1>
+  <div class="subtitle">Senior Product Designer</div>
+  <div class="contact">alex.johnson@email.com · +91 98765 43210 · linkedin.com/in/alexjohnson · New Delhi, India</div>
+  
+  <div class="section">
+    <div class="section-title">Experience</div>
+    <div class="job">
+      <div class="job-header"><span class="job-title">Lead Product Designer</span><span class="job-date">2022 – Present</span></div>
+      <div class="job-org">TechCorp India, New Delhi</div>
+      <ul><li>Led design for 3 flagship products with 2M+ users</li><li>Managed a team of 5 designers across 2 time zones</li><li>Reduced user onboarding drop-off by 34% via UX redesign</li></ul>
+    </div>
+    <div class="job">
+      <div class="job-header"><span class="job-title">Product Designer</span><span class="job-date">2019 – 2022</span></div>
+      <div class="job-org">StartupXYZ, Bangalore</div>
+      <ul><li>Designed end-to-end mobile app (iOS + Android) from 0 to launch</li><li>Created and maintained design system adopted by entire eng team</li></ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Education</div>
+    <div class="job-header"><span class="job-title">B.Des in Communication Design</span><span class="job-date">2015 – 2019</span></div>
+    <div class="job-org">National Institute of Design, Ahmedabad</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Skills</div>
+    <div class="skills">
+      <span class="skill">Figma</span><span class="skill">Prototyping</span><span class="skill">User Research</span>
+      <span class="skill">Design Systems</span><span class="skill">HTML/CSS</span><span class="skill">Accessibility</span>
+    </div>
+  </div>
+</body>
+</html>`
+  },
+  {
+    icon: '📰',
+    title: 'Newsletter',
+    desc: 'Styled email newsletter layout',
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 30px 20px; }
+  .wrapper { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+  .header { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; padding: 40px 40px 30px; text-align: center; }
+  .header h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.5px; }
+  .header p { margin: 0; opacity: 0.8; font-size: 14px; }
+  .content { padding: 36px 40px; }
+  .article { margin-bottom: 28px; padding-bottom: 28px; border-bottom: 1px solid #f0f0f0; }
+  .article:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .article h2 { font-size: 18px; color: #1a1a2e; margin: 0 0 10px; }
+  .article p { color: #636e72; font-size: 14px; line-height: 1.7; margin: 0 0 12px; }
+  .read-more { color: #6c5ce7; font-weight: 700; font-size: 13px; text-decoration: none; }
+  .cta { background: #f8f9fa; padding: 24px 40px; text-align: center; }
+  .cta-btn { background: #6c5ce7; color: white; padding: 12px 28px; border-radius: 6px; font-weight: 700; font-size: 14px; text-decoration: none; display: inline-block; }
+  .footer { background: #2d3436; color: #b2bec3; padding: 20px 40px; text-align: center; font-size: 12px; line-height: 1.8; }
+</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>The Weekly Dispatch</h1>
+      <p>Your curated digest — June 2026, Issue #42</p>
+    </div>
+    <div class="content">
+      <div class="article">
+        <h2>🚀 Top Story: AI Tools Reshape Creative Workflows</h2>
+        <p>Designers and developers are reporting dramatic productivity gains as AI-assisted tools become standard in professional workflows. We explore what's changing and what to watch for.</p>
+        <a class="read-more" href="#">Read more →</a>
+      </div>
+      <div class="article">
+        <h2>🛠️ Tip of the Week: Master CSS Grid in 10 Minutes</h2>
+        <p>One layout feature continues to confuse beginners and impress senior devs alike. Here's a visual guide that finally makes it click.</p>
+        <a class="read-more" href="#">Read more →</a>
+      </div>
+      <div class="article">
+        <h2>📚 Resource: Free UI Kit for Startups</h2>
+        <p>A community-built Figma kit with 400+ components just dropped, completely free for commercial use. Here's what's inside.</p>
+        <a class="read-more" href="#">Read more →</a>
+      </div>
+    </div>
+    <div class="cta">
+      <p style="font-size:14px;color:#636e72;margin:0 0 16px">Enjoying the newsletter?</p>
+      <a class="cta-btn" href="#">Share with a Friend</a>
+    </div>
+    <div class="footer">
+      You're receiving this because you subscribed at oursite.com<br>
+      <a href="#" style="color:#a29bfe">Unsubscribe</a> · <a href="#" style="color:#a29bfe">View Online</a>
+    </div>
+  </div>
+</body>
+</html>`
+  },
+  {
+    icon: '📖',
+    title: 'Study Sheet',
+    desc: 'Formatted worksheet / answer key',
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #212529; line-height: 1.6; padding: 40px; max-width: 800px; margin: 0 auto; }
+  .header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 20px; margin-bottom: 30px; }
+  .badge { background: #2c3e50; color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+  h1 { font-size: 24px; margin: 15px 0 5px; color: #1a252f; }
+  .subtitle { font-size: 14px; color: #7f8c8d; font-style: italic; }
+  .instructions { background: #f1f8ff; border-left: 4px solid #3498db; padding: 15px; margin-bottom: 25px; font-size: 14px; }
+  .q-item { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px dashed #e0e0e0; }
+  .q-text { font-size: 15px; color: #333; }
+  .answer-key { margin-top: 50px; border-top: 3px solid #27ae60; padding-top: 30px; }
+  .answer-key h2 { text-align: center; color: #27ae60; font-size: 18px; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 20px; }
+  th { background: #27ae60; color: white; padding: 10px; text-align: left; }
+  td { padding: 8px 10px; border-bottom: 1px solid #e9ecef; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  .ans { font-weight: bold; color: #27ae60; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <span class="badge">Study Sheet</span>
+    <h1>Grammar Practice — Verb Forms</h1>
+    <p class="subtitle">Identify the error in each sentence</p>
+  </div>
+  <div class="instructions"><strong>Directions:</strong> Each sentence below may contain one grammatical error. Identify the part that is incorrect, or mark (D) No Error.</div>
+  <div class="q-item"><strong>1.</strong> The sudden noise <strong>(A)</strong> frightened the baby <strong>(B)</strong> and made it to cry. <strong>(C)</strong> No Error. <strong>(D)</strong></div>
+  <div class="q-item"><strong>2.</strong> We are interesting in purchasing <strong>(A)</strong> a new device <strong>(B)</strong> for the office. <strong>(C)</strong> No Error. <strong>(D)</strong></div>
+  <div class="q-item"><strong>3.</strong> The committee is <strong>(A)</strong> aimed at benefit <strong>(B)</strong> all residents <strong>(C)</strong> in every way. <strong>(D)</strong></div>
+  <div class="answer-key">
+    <h2>Answer Key</h2>
+    <table>
+      <tr><th>Q</th><th>Answer</th><th>Explanation</th></tr>
+      <tr><td>1</td><td class="ans">C</td><td>'Make' uses bare infinitive: "made it cry"</td></tr>
+      <tr><td>2</td><td class="ans">A</td><td>Should be "interested in" (past participle as adjective)</td></tr>
+      <tr><td>3</td><td class="ans">B</td><td>Preposition 'at' requires gerund: "aimed at benefiting"</td></tr>
+    </table>
+  </div>
+</body>
+</html>`
+  }
+];
+
+function renderTemplates() {
+  const grid = document.getElementById('templateGrid');
+  grid.innerHTML = TEMPLATES.map((t, i) => `
+    <div class="template-card" onclick="applyTemplate(${i})">
+      <div class="template-card-icon">${t.icon}</div>
+      <div class="template-card-title">${t.title}</div>
+      <div class="template-card-desc">${t.desc}</div>
+    </div>
+  `).join('');
+}
+
+function applyTemplate(i) {
+  editor.value = TEMPLATES[i].html;
+  closeTemplates();
+  updatePreview();
+  updateLineNumbers();
+  updateCharCount();
+  showToast(`"${TEMPLATES[i].title}" loaded`, 'success');
+}
+
+function openTemplates()  { document.getElementById('templatesModal').classList.add('open'); }
+function closeTemplates() { document.getElementById('templatesModal').classList.remove('open'); }
+function closeTemplatesOnBackdrop(e) { if (e.target === document.getElementById('templatesModal')) closeTemplates(); }
+
+/* ──────────────────────────────────────────────────────────────
+   KEYBOARD SHORTCUTS
+────────────────────────────────────────────────────────────── */
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); downloadPDF(); }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') { e.preventDefault(); copyHTML(); }
+  if (e.key === 'Escape') closeTemplates();
+});
+
+/* ──────────────────────────────────────────────────────────────
+   INIT
+────────────────────────────────────────────────────────────── */
+(function init() {
+  renderTemplates();
+  applyTemplate(0); // Load blank doc by default
+  updateCursor();
+})();
+</script>
+</body>
+</html>
